@@ -1,3 +1,4 @@
+import os
 import random
 from scipy.optimize import OptimizeResult, minimize
 import numpy as np
@@ -11,7 +12,7 @@ from RUFAS.general_constants import GeneralConstants
 from RUFAS.biophysical.animal.animal_module_constants import AnimalModuleConstants
 
 from RUFAS.biophysical.animal.data_types.nutrition_data_structures import NutritionRequirements
-from RUFAS.data_structures.feed_storage_to_animal_connection import RUFAS_ID, Feed, NutrientStandard
+from RUFAS.data_structures.feed_storage_to_animal_connection import RUFAS_ID, Feed, NutrientStandard, FeedComponentType
 
 from RUFAS.output_manager import OutputManager
 
@@ -146,6 +147,7 @@ class RationOptimizer:
         self.constraint_functions: list[Callable[[Any, Any], float]] = []
         self.cow_constraints: list[dict[str, Callable[[Any, Any], float] | tuple[RationConfig] | str] | str] = []
         self.heifer_constraints: list[dict[str, Callable[[Any, Any], float] | tuple[RationConfig] | str] | str] = []
+        self.optimization_mode: str = os.environ.get("RUFAS_OPTIMIZATION_MODE", "slsqp")
 
     def set_constraints(self, ration_config: RationConfig) -> None:
         """
@@ -908,6 +910,20 @@ class RationOptimizer:
 
         constraints_to_use = self._select_constraints(animal_combination)
 
+        mode = os.environ.get("RUFAS_OPTIMIZATION_MODE", getattr(self, "optimization_mode", "slsqp")).lower()
+        if mode in ["linear_native", "pure_simplex", "simplex_nativo", "simplex"] and animal_combination is AnimalCombination.LAC_COW:
+            try:
+                optimized_ration_attempt = self._attempt_native_simplex_optimization(
+                    ration_config=ration_config,
+                    bounds=bounds,
+                    animal_combination=animal_combination,
+                    initial_decision_vector=initial_decision_vector,
+                )
+                if optimized_ration_attempt.success:
+                    return optimized_ration_attempt, ration_config
+            except Exception:
+                pass  # Fallback to default SLSQP if error
+
         optimized_ration_attempt = minimize(
             self.objective,
             initial_decision_vector,
@@ -918,6 +934,160 @@ class RationOptimizer:
         )
 
         return optimized_ration_attempt, ration_config
+
+    def _attempt_native_simplex_optimization(
+        self,
+        ration_config: RationConfig,
+        bounds: list[tuple[float, float]],
+        animal_combination: AnimalCombination,
+        initial_decision_vector: npt.NDArray[np.float64],
+    ) -> OptimizeResult:
+        """
+        Formula e resolve o problema da dieta de custo mínimo via Simplex de Duas Fases nativo (NumPy).
+        Grava histórico completo de Tableaus em output/tableaus_simplex_latest.json.
+        """
+        from RUFAS.biophysical.animal.ration.pure_simplex_solver import TwoPhaseSimplexSolver
+
+        self.set_constraints(ration_config=ration_config)
+        n = len(ration_config.feeds_used)
+        c = np.array(ration_config.price_list, dtype=np.float64)
+
+        var_names = [
+            getattr(feed, "feed_name", None) or f"Insumo_{getattr(feed, 'feed_id', i+1)}"
+            for i, feed in enumerate(ration_config.feeds_used)
+        ]
+
+        A_ub_rows: list[list[float]] = []
+        b_ub_rows: list[float] = []
+        constraint_names: list[str] = []
+
+        # 1. Consumo Máximo de Matéria Seca (DMI Max)
+        dmi_max = ration_config.initial_dry_matter_requirement * (1.0 + ration_config.dmi_constraint_fraction)
+        A_ub_rows.append([1.0] * n)
+        b_ub_rows.append(float(dmi_max))
+        constraint_names.append("Consumo Maximo de MS (DMI Max)")
+
+        # 2. Consumo Mínimo de Matéria Seca (DMI Min)
+        dmi_min = ration_config.initial_dry_matter_requirement * (1.0 - ration_config.dmi_constraint_fraction)
+        A_ub_rows.append([-1.0] * n)
+        b_ub_rows.append(-float(dmi_min))
+        constraint_names.append("Consumo Minimo de MS (DMI Min)")
+
+        # 3. Exigência de Energia Líquida
+        req_energy = getattr(ration_config.animal_requirements, "total_energy_requirement", None)
+        if req_energy is None or req_energy <= 0:
+            req_energy = (
+                getattr(ration_config.animal_requirements, "maintenance_energy", 0.0)
+                + getattr(ration_config.animal_requirements, "lactation_energy", 0.0)
+                + getattr(ration_config.animal_requirements, "growth_energy", 0.0)
+            )
+        if req_energy and req_energy > 0:
+            ne_coeffs = []
+            for feed in ration_config.feeds_used:
+                de_val = getattr(feed, "DE", 0.0) or 0.0
+                tdn_val = getattr(feed, "TDN", 0.0) or 0.0
+                if de_val > 0:
+                    nel = de_val * 0.64
+                elif tdn_val > 0:
+                    nel = tdn_val * 0.04409 * 0.64
+                else:
+                    nel = 0.0
+                ne_coeffs.append(-float(nel))
+            A_ub_rows.append(ne_coeffs)
+            b_ub_rows.append(-float(req_energy))
+            constraint_names.append("Energia Liquida Minima (NE)")
+
+        # 4. Proteína Metabolizável Mínima
+        req_mp = getattr(ration_config.animal_requirements, "metabolizable_protein", 0.0) or 0.0
+        if req_mp > 0:
+            mp_coeffs = []
+            for feed in ration_config.feeds_used:
+                cp_val = getattr(feed, "CP", 0.0) or 0.0
+                mp_coeffs.append(-float(cp_val * 6.5))
+            A_ub_rows.append(mp_coeffs)
+            b_ub_rows.append(-float(req_mp))
+            constraint_names.append("Proteina Metabolizavel Minima (PM Min)")
+
+            # Teto de Proteína Metabolizável (150%)
+            mp_upper = [float(-val) for val in mp_coeffs]
+            A_ub_rows.append(mp_upper)
+            b_ub_rows.append(float(req_mp * 1.5))
+            constraint_names.append("Teto de Proteina Metabolizavel (PM Max 150%)")
+
+        # 5. Cálcio Mínimo
+        req_ca = getattr(ration_config.animal_requirements, "calcium", 0.0) or 0.0
+        if req_ca > 0:
+            ca_coeffs = [-float((getattr(feed, "calcium", 0.0) or 0.0) * 10.0) for feed in ration_config.feeds_used]
+            A_ub_rows.append(ca_coeffs)
+            b_ub_rows.append(-float(req_ca))
+            constraint_names.append("Calcio Minimo (Ca)")
+
+        # 6. Fósforo Mínimo
+        req_p = getattr(ration_config.animal_requirements, "phosphorus", 0.0) or 0.0
+        if req_p > 0:
+            p_coeffs = [-float((getattr(feed, "phosphorus", 0.0) or 0.0) * 10.0) for feed in ration_config.feeds_used]
+            A_ub_rows.append(p_coeffs)
+            b_ub_rows.append(-float(req_p))
+            constraint_names.append("Fosforo Minimo (P)")
+
+        # 7. FDN de Forragem Mínimo (peNDF)
+        min_fndf = AnimalModuleConstants.MINIMUM_RATION_FORAGE_NDF
+        fndf_coeffs = []
+        for feed in ration_config.feeds_used:
+            is_forage = getattr(feed, "feed_type", None) == FeedComponentType.FORAGE
+            ndf_val = float(getattr(feed, "NDF", 0.0) or 0.0)
+            f_ndf = ndf_val if is_forage else 0.0
+            fndf_coeffs.append(-float(f_ndf - min_fndf))
+        A_ub_rows.append(fndf_coeffs)
+        b_ub_rows.append(0.0)
+        constraint_names.append("FDN Forrageiro Minimo (peNDF)")
+
+        # 8. Gordura Máxima (Extrato Etéreo)
+        max_fat = AnimalModuleConstants.MAXIMUM_RATION_FAT
+        fat_coeffs = [float((getattr(feed, "EE", 0.0) or 0.0) - max_fat) for feed in ration_config.feeds_used]
+        A_ub_rows.append(fat_coeffs)
+        b_ub_rows.append(0.0)
+        constraint_names.append("Extrato Etereo Maximo (Gordura Max)")
+
+        A_ub = np.array(A_ub_rows, dtype=np.float64)
+        b_ub = np.array(b_ub_rows, dtype=np.float64)
+
+        solver = TwoPhaseSimplexSolver(tol=1e-8, max_iter=2000)
+        res = solver.solve(
+            c=c,
+            A_ub=A_ub,
+            b_ub=b_ub,
+            bounds=bounds,
+            var_names=var_names,
+            constraint_names=constraint_names,
+        )
+
+        try:
+            from pathlib import Path
+            output_tableaus_path = Path("output/tableaus_simplex_latest.json")
+            output_tableaus_path.parent.mkdir(parents=True, exist_ok=True)
+            solver.save_tableaus_json(output_tableaus_path)
+        except Exception:
+            pass
+
+        if not res["success"]:
+            return OptimizeResult(
+                x=res["x"] if res.get("x") is not None else initial_decision_vector,
+                success=False,
+                status=res.get("status", 2),
+                message=f"Pure Simplex Solver failed: {res['message']}",
+                fun=float(res.get("fun", 0.0)),
+                nit=int(res.get("nit", 0)),
+            )
+
+        return OptimizeResult(
+            x=res["x"],
+            success=True,
+            status=0,
+            message=res["message"],
+            fun=float(res["fun"]),
+            nit=int(res["nit"]),
+        )
 
     @staticmethod
     def _check_initial_bounds(
