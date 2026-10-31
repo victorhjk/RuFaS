@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fazenda Campo Dourado - Gestão do Rebanho, Otimização & Sensibilidade</title>
+  <!-- Tailwind CSS & FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- Cabeçalho Principal -->
+  <header class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-lg sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <div class="bg-blue-600 p-2.5 rounded-xl shadow-md flex items-center justify-center">
+          <i class="fa-solid fa-cow text-2xl text-white"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-bold tracking-tight flex items-center gap-2">
+            Fazenda Campo Dourado <span class="text-xs bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-2 py-0.5 rounded-full font-medium">RuFaS & Simplex Nativo</span>
+          </h1>
+          <p class="text-xs text-slate-300">
+            Modelagem e Otimização Aplicada | Prof. Dr. Eduardo Noronha | Discente: Victor Hugo Jesus | IFG
+          </p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="restaurarPadroes()" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-lg border border-slate-600 transition flex items-center gap-1.5 shadow-sm">
+          <i class="fa-solid fa-rotate-left"></i> Restaurar Padrões
+        </button>
+      </div>
+    </div>
+
+    <!-- Navegação de Módulos (Abas Principais) -->
+    <div class="max-w-7xl mx-auto px-4 border-t border-indigo-800/60 flex space-x-1">
+      <button onclick="trocarModulo('modulo-rebanho')" id="nav-modulo-rebanho" class="py-2.5 px-4 text-xs font-semibold border-b-2 border-emerald-400 text-white flex items-center gap-2 transition">
+        <i class="fa-solid fa-users-line text-emerald-400"></i> Módulo 1: Gestão & Rebanho
+      </button>
+      <button onclick="trocarModulo('modulo-dieta')" id="nav-modulo-dieta" class="py-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-300 hover:text-white flex items-center gap-2 transition">
+        <i class="fa-solid fa-bowl-food text-blue-400"></i> Módulo 2: Otimização & Sensibilidade
+      </button>
+      <button onclick="trocarModulo('modulo-tableaus')" id="nav-modulo-tableaus" class="py-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-300 hover:text-white flex items-center gap-2 transition">
+        <i class="fa-solid fa-table-cells text-amber-400"></i> Módulo 3: Inspetor Simplex (Tableaus)
+      </button>
+    </div>
+  </header>
+
+  <!-- Container Principal -->
+  <main class="max-w-7xl mx-auto px-4 py-6 space-y-6 flex-1">
+
+    <!-- KPI Cards em Tempo Real (Visão Geral da Fazenda) -->
+    <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <!-- Custo Vaca Dia -->
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <div class="flex items-center justify-between text-slate-500 text-xs font-medium mb-1">
+          <span>Custo Ração (Z*)</span>
+          <i class="fa-solid fa-coins text-amber-500"></i>
+        </div>
+        <div class="text-xl font-bold text-slate-900" id="kpi-custo-total">R$ 25,01</div>
+        <div class="text-[11px] text-slate-500 mt-0.5" id="kpi-custo-kg">R$ 0,94 / kg MS</div>
+      </div>
+
+      <!-- Rebanho -->
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <div class="flex items-center justify-between text-slate-500 text-xs font-medium mb-1">
+          <span>Rebanho Adulto</span>
+          <i class="fa-solid fa-cow text-blue-500"></i>
+        </div>
+        <div class="text-xl font-bold text-slate-900" id="kpi-rebanho">200 vacas</div>
+        <div class="text-[11px] text-emerald-600 font-medium mt-0.5" id="kpi-rebanho-sub">158 lactantes (79%)</div>
+      </div>
+
+      <!-- Produção de Leite -->
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <div class="flex items-center justify-between text-slate-500 text-xs font-medium mb-1">
+          <span>Leite Total / Dia</span>
+          <i class="fa-solid fa-bottle-water text-cyan-500"></i>
+        </div>
+        <div class="text-xl font-bold text-slate-900" id="kpi-leite-dia">5.214 L/dia</div>
+        <div class="text-[11px] text-slate-500 mt-0.5" id="kpi-leite-mes">156,4 mil L / mês</div>
+      </div>
+
+      <!-- Demanda no Cocho -->
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <div class="flex items-center justify-between text-slate-500 text-xs font-medium mb-1">
+          <span>No Cocho (Logística)</span>
+          <i class="fa-solid fa-truck-moving text-indigo-500"></i>
+        </div>
+        <div class="text-xl font-bold text-slate-900" id="kpi-cocho-dia">11,7 t / dia</div>
+        <div class="text-[11px] text-slate-500 mt-0.5" id="kpi-cocho-mes">352 t frescas / mês</div>
+      </div>
+
+      <!-- Faturamento Fazenda -->
+      <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <div class="flex items-center justify-between text-slate-500 text-xs font-medium mb-1">
+          <span>Faturamento Leite</span>
+          <i class="fa-solid fa-money-bill-trend-up text-emerald-500"></i>
+        </div>
+        <div class="text-xl font-bold text-slate-900" id="kpi-fat-mes">R$ 464,4 mil</div>
+        <div class="text-[11px] text-slate-500 mt-0.5" id="kpi-fat-dia">R$ 15,4 mil / dia</div>
+      </div>
+
+      <!-- Margem IOFC Fazenda -->
+      <div class="bg-emerald-50 rounded-xl p-4 shadow-sm border border-emerald-200">
+        <div class="flex items-center justify-between text-emerald-800 text-xs font-semibold mb-1">
+          <span>Margem IOFC Total</span>
+          <i class="fa-solid fa-chart-line text-emerald-600"></i>
+        </div>
+        <div class="text-xl font-bold text-emerald-700" id="kpi-iofc-fazenda">R$ 331,4 mil</div>
+        <div class="text-[11px] text-emerald-700 font-medium mt-0.5" id="kpi-iofc-dia-fazenda">R$ 11,0 mil / dia</div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- MÓDULO 1: GESTÃO & DIMENSIONAMENTO DO REBANHO                       -->
+    <!-- =================================================================== -->
+    <div id="modulo-rebanho" class="space-y-6">
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Coluna de Controles do Rebanho (5 Colunas) -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
+            <h3 class="font-bold text-sm text-slate-800 pb-2 border-b border-slate-100 flex items-center gap-2">
+              <i class="fa-solid fa-sliders text-emerald-600"></i> Parâmetros do Rebanho e Manejo
+            </h3>
+
+            <!-- Tamanho do Rebanho -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="font-medium text-slate-700">Tamanho Total do Rebanho (Vacas Adultas)</span>
+                <span class="font-bold text-blue-600" id="val-total-cows">200 vacas</span>
+              </div>
+              <input type="range" min="50" max="500" step="10" value="200" id="slider-total-cows" oninput="atualizarParametrosRebanho()" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+              <div class="flex justify-between text-[10px] text-slate-400 mt-0.5">
+                <span>50 vacas</span>
+                <span>Padrão Atual: 200</span>
+                <span>500 vacas</span>
+              </div>
+            </div>
+
+            <!-- Percentual em Lactação -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="font-medium text-slate-700">Fração em Lactação (%)</span>
+                <span class="font-bold text-emerald-600" id="val-pct-milking">79 %</span>
+              </div>
+              <input type="range" min="50" max="95" step="1" value="79" id="slider-pct-milking" oninput="atualizarParametrosRebanho()" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+              <div class="flex justify-between text-[10px] text-slate-400 mt-0.5">
+                <span>50%</span>
+                <span>Sua escolha: 79%</span>
+                <span>95%</span>
+              </div>
+            </div>
+
+            <!-- Raça do Rebanho -->
+            <div>
+              <label class="block text-xs font-medium text-slate-700 mb-1">Raça do Rebanho & Peso Vivo Médio</label>
+              <select id="select-raca" onchange="atualizarParametrosRebanho()" class="w-full text-xs bg-slate-50 border border-slate-300 rounded-lg px-3 py-2 font-medium">
+                <option value="HO" selected>Holandesa (BW = 640,5 kg - Padrão NASEM / Campo Dourado)</option>
+                <option value="GIROLANDO">Girolando Tropical (BW = 580,0 kg)</option>
+                <option value="JERSEY">Jersey (BW = 480,0 kg - Alta Gordura)</option>
+              </select>
+            </div>
+
+            <!-- Frequência de Ordenhas -->
+            <div>
+              <label class="block text-xs font-medium text-slate-700 mb-1">Frequência de Ordenhas Diárias</label>
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button" onclick="setOrdenhas(2)" id="btn-ord-2" class="py-2 px-3 rounded-lg border text-xs font-medium text-slate-600 bg-slate-50 border-slate-200 hover:bg-slate-100 transition">
+                  2 ordenhas / dia
+                </button>
+                <button type="button" onclick="setOrdenhas(3)" id="btn-ord-3" class="py-2 px-3 rounded-lg border text-xs font-bold text-white bg-blue-600 border-blue-600 shadow-sm transition">
+                  3 ordenhas (+10% leite)
+                </button>
+              </div>
+            </div>
+
+            <!-- Mitigação de Metano (3-NOP Bovaer) -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="font-medium text-slate-700">Mitigador de Metano (Aditivo 3-NOP Bovaer)</span>
+                <span class="font-bold text-teal-600" id="val-metano">90 mg/kg MS</span>
+              </div>
+              <input type="range" min="0" max="120" step="30" value="90" id="slider-metano" oninput="atualizarParametrosRebanho()" class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+              <div class="flex justify-between text-[10px] text-slate-400 mt-0.5">
+                <span>0 (Sem aditivo)</span>
+                <span>90 mg (Campo Dourado)</span>
+                <span>120 mg/kg MS</span>
+              </div>
+            </div>
+
+            <!-- Produção Individual e Preço -->
+            <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-100">
+              <div>
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">Leite Vaca/Dia</label>
+                <input type="number" id="input-leite-prod" value="30.0" step="1" min="15" max="50" onchange="atualizarParametrosRebanho()" class="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold">
+              </div>
+              <div>
+                <label class="block text-[11px] font-medium text-slate-600 mb-1">Preço Leite CEPEA</label>
+                <input type="number" id="input-leite-preco" value="2.9692" step="0.05" min="1.50" max="5.00" onchange="atualizarParametrosRebanho()" class="w-full text-xs border border-slate-300 rounded-lg px-2.5 py-1.5 font-bold text-emerald-700">
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Coluna de Painéis e Gráficos de Dimensionamento (7 Colunas) -->
+        <div class="lg:col-span-7 space-y-4">
+
+          <!-- Cards de Dimensionamento -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <!-- Dimensionamento Físico e Lavoura -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-3">
+              <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-wheat-awn text-amber-600"></i> Logística de Cocho & Lavoura de Silagem
+              </h4>
+              <ul class="text-xs space-y-2 text-slate-600">
+                <li class="flex justify-between pb-1 border-b border-slate-100">
+                  <span>Vacas em Lactação:</span>
+                  <span class="font-bold text-slate-900" id="res-vacas-lact">158 vacas</span>
+                </li>
+                <li class="flex justify-between pb-1 border-b border-slate-100">
+                  <span>Vacas Secas (Pré-Parto):</span>
+                  <span class="font-bold text-slate-900" id="res-vacas-secas">42 vacas</span>
+                </li>
+                <li class="flex justify-between pb-1 border-b border-slate-100">
+                  <span>Comida Fresca no Cocho:</span>
+                  <span class="font-bold text-indigo-700" id="res-cocho-dia">11,74 t / dia</span>
+                </li>
+                <li class="flex justify-between pb-1 border-b border-slate-100">
+                  <span>Demanda de Matéria Seca:</span>
+                  <span class="font-bold text-slate-900" id="res-ms-dia">4,75 t MS / dia</span>
+                </li>
+                <li class="flex justify-between pb-1 border-b border-slate-100">
+                  <span>Silagem de Milho Anual:</span>
+                  <span class="font-bold text-slate-900" id="res-silagem-ano">3.218 t / ano</span>
+                </li>
+                <li class="flex justify-between pt-1 font-semibold text-emerald-800 bg-emerald-50 px-2 py-1 rounded">
+                  <span>Área de Lavoura Necessária (Milho):</span>
+                  <span class="font-extrabold text-emerald-700" id="res-area-silagem">71,5 ha (45 t/ha)</span>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Balanço Econômico e Sustentabilidade -->
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-3">
+              <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-receipt text-emerald-600"></i> Balanço Financeiro & Emissões
+              </h4>
+              <ul class="text-xs space-y-2 text-slate-600">
+                <li class="flex justify-between pb-1 border-b border-slate-100">
+                  <span>Faturamento Mensal (Leite):</span>
+                  <span class="font-bold text-emerald-700" id="res-fat-mes">R$ 464.442,26</span>
+                </li>
+                <li class="flex justify-between pb-1 border-b border-slate-100">
+                  <span>Custo Ração Todo Rebanho:</span>
+                  <span class="font-bold text-rose-600" id="res-custo-rebanho-mes">R$ 133.040,70</span>
+                </li>
+                <li class="flex justify-between pb-1 border-b border-slate-100 font-bold bg-emerald-50 px-2 py-1 rounded text-emerald-900">
+                  <span>Margem IOFC Mensal da Fazenda:</span>
+                  <span class="font-extrabold text-emerald-700" id="res-iofc-mes">R$ 331.401,56</span>
+                </li>
+                <li class="flex justify-between pb-1 border-b border-slate-100">
+                  <span>Redução Entérica (3-NOP):</span>
+                  <span class="font-bold text-teal-600" id="res-red-metano">-30,0% de CH4</span>
+                </li>
+                <li class="flex justify-between pt-1 font-semibold text-teal-800 bg-teal-50 px-2 py-1 rounded">
+                  <span>CO2 Equivalente Evitado:</span>
+                  <span class="font-extrabold text-teal-700" id="res-co2-ano">169,5 t CO2e / ano</span>
+                </li>
+              </ul>
+            </div>
+
+          </div>
+
+          <!-- Gráficos de Visão Geral do Rebanho -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+              <h5 class="text-xs font-bold text-slate-700 uppercase mb-2">Composição do Rebanho (Cabeças)</h5>
+              <div class="h-48 flex items-center justify-center">
+                <canvas id="chart-rebanho-dist"></canvas>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+              <h5 class="text-xs font-bold text-slate-700 uppercase mb-2">Balanço Mensal: Faturamento vs. Ração</h5>
+              <div class="h-48">
+                <canvas id="chart-financeiro-rebanho"></canvas>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- MÓDULO 2: OTIMIZAÇÃO DA DIETA & ANÁLISE DE SENSIBILIDADE             -->
+    <!-- =================================================================== -->
+    <div id="modulo-dieta" class="hidden space-y-6">
+
+      <!-- Cenários Rápidos (1-Click Presets) -->
+      <section class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <div class="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
+          <i class="fa-solid fa-wand-magic-sparkles text-indigo-600"></i> Simulação de Cenários de Mercado (1 Clique)
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="aplicarCenario('base')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-landmark text-blue-600"></i> Padrão Campo Dourado (CEPEA)
+          </button>
+          <button onclick="aplicarCenario('milho_barato')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-arrow-trend-down text-emerald-600"></i> Safra Recorde: Milho R$ 35/sc (Entra na Ração!)
+          </button>
+          <button onclick="aplicarCenario('choque_graos')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-300 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-arrow-trend-up text-rose-600"></i> Choque de Grãos (+40% Milho e DDGS)
+          </button>
+          <button onclick="aplicarCenario('seca_silagem')" class="px-3 py-1.5 rounded-lg text-xs font-medium bg-orange-50 hover:bg-orange-100 text-orange-900 border border-orange-300 transition flex items-center gap-1.5">
+            <i class="fa-solid fa-sun text-orange-600"></i> Seca Severa em Goiás (+50% Silagem)
+          </button>
+        </div>
+      </section>
+
+      <!-- Layout Grid: Insumos à Esquerda & Resultados à Direita -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Coluna de Insumos & Exigências (4 Colunas) -->
+        <div class="lg:col-span-4 space-y-4">
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-blue-600"></i> Preços dos Insumos
+              </h3>
+              <span class="text-[11px] text-slate-400">R$/kg de Matéria Seca</span>
+            </div>
+            <div class="space-y-4 pt-3" id="sliders-insumos">
+              <!-- Sliders preenchidos via JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Coluna de Resultados e Tabelas (8 Colunas) -->
+        <div class="lg:col-span-8 space-y-4">
+
+          <!-- Gráficos da Ração -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+              <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <i class="fa-solid fa-chart-column text-blue-600"></i> kg no Cocho (Matéria Natural)
+              </h4>
+              <div class="h-56">
+                <canvas id="chart-barras"></canvas>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+              <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <i class="fa-solid fa-chart-pie text-indigo-600"></i> Distribuição da Matéria Seca (%)
+              </h4>
+              <div class="h-56 flex items-center justify-center">
+                <canvas id="chart-pizza"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabela de Insumos da Dieta -->
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+              <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-bowl-food text-emerald-600"></i> Composição Zootécnica da Ração Ótima
+              </h3>
+              <span class="text-xs text-slate-500 font-mono" id="iteracoes-info">17 iterações do Simplex</span>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                  <tr>
+                    <th class="py-2.5 px-3">Código</th>
+                    <th class="py-2.5 px-3">Ingrediente</th>
+                    <th class="py-2.5 px-3">Categoria</th>
+                    <th class="py-2.5 px-3 text-right">kg MS / dia</th>
+                    <th class="py-2.5 px-3 text-right">% MS</th>
+                    <th class="py-2.5 px-3 text-right">No Cocho (kg MN)</th>
+                    <th class="py-2.5 px-3 text-right">R$ / kg MS</th>
+                    <th class="py-2.5 px-3 text-right">Custo / dia</th>
+                    <th class="py-2.5 px-3 text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-dieta" class="divide-y divide-slate-100">
+                  <!-- Linhas preenchidas via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tabela das 12 Restrições e Preços-Sombra -->
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-4 border-b border-slate-100">
+              <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-clipboard-check text-blue-600"></i> Status das 12 Restrições Nutricionais (NASEM)
+              </h3>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                  <tr>
+                    <th class="py-2.5 px-3">#</th>
+                    <th class="py-2.5 px-3">Restrição</th>
+                    <th class="py-2.5 px-3 text-right">Limite</th>
+                    <th class="py-2.5 px-3 text-right">Obtido</th>
+                    <th class="py-2.5 px-3 text-center">Status</th>
+                    <th class="py-2.5 px-3 text-right">Folga</th>
+                    <th class="py-2.5 px-3 text-right">Preço-Sombra</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-restricoes" class="divide-y divide-slate-100">
+                  <!-- Preenchido via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Tabela de Sensibilidade dos Custos -->
+          <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-4 border-b border-slate-100">
+              <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-chart-line text-indigo-600"></i> Sensibilidade dos Custos & Intervalos de Base
+              </h3>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200">
+                  <tr>
+                    <th class="py-2.5 px-3">Variável</th>
+                    <th class="py-2.5 px-3">Alimento</th>
+                    <th class="py-2.5 px-3 text-center">Base</th>
+                    <th class="py-2.5 px-3 text-right">Custo Atual</th>
+                    <th class="py-2.5 px-3 text-right">Custo Mín.</th>
+                    <th class="py-2.5 px-3 text-right">Custo Máx.</th>
+                    <th class="py-2.5 px-3 text-right">Custo Reduzido</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-sensibilidade" class="divide-y divide-slate-100">
+                  <!-- Preenchido via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- MÓDULO 3: INSPETOR DIDÁTICO DE TABLEAUS SIMPLEX                     -->
+    <!-- =================================================================== -->
+    <div id="modulo-tableaus" class="hidden space-y-4">
+      <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-slate-100">
+          <div>
+            <h3 class="font-bold text-sm text-slate-800 flex items-center gap-2">
+              <i class="fa-solid fa-table text-blue-600"></i> Rastreamento Matricial Passo a Passo dos Tableaus
+            </h3>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Implementação autoral em NumPy puro: inspecione as iterações da Fase 1 (viabilidade) e Fase 2 (otimização).
+            </p>
+          </div>
+          <div class="flex items-center gap-2">
+            <label for="select-tableau" class="text-xs font-semibold text-slate-600">Iteração:</label>
+            <select id="select-tableau" onchange="exibirTableauSelecionado()" class="text-xs bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 font-mono">
+              <!-- Opções preenchidas via JS -->
+            </select>
+          </div>
+        </div>
+
+        <!-- Indicadores do Passo Atual -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 my-4 text-xs">
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <span class="text-slate-500 block">Fase:</span>
+            <span class="font-bold text-slate-800" id="tab-fase">Fase 2 (Otimização)</span>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <span class="text-slate-500 block">Variável Entrante (Coluna):</span>
+            <span class="font-bold text-emerald-600" id="tab-entrante">x51</span>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <span class="text-slate-500 block">Variável Sainte (Linha):</span>
+            <span class="font-bold text-rose-600" id="tab-sainte">s1</span>
+          </div>
+          <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <span class="text-slate-500 block">Elemento Pivô:</span>
+            <span class="font-bold text-blue-600" id="tab-pivo">1.250</span>
+          </div>
+        </div>
+
+        <!-- Matriz do Tableau -->
+        <div class="overflow-x-auto border border-slate-200 rounded-lg max-h-96 custom-scroll">
+          <table class="w-full text-left text-xs font-mono" id="tabela-matriz-tableau">
+            <!-- Cabeçalho e Linhas da Matriz geradas via JS -->
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    // Estado Global da Aplicação
+    let dadosAtuais = null;
+    let padroesServidor = null;
+    let chartBarras = null;
+    let chartPizza = null;
+    let chartRebanhoDist = null;
+    let chartFinanceiroRebanho = null;
+    let ordenhasAtual = 3;
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      await carregarPadroes();
+      await otimizar();
+    });
+
+    async function carregarPadroes() {
+      const resp = await fetch('/api/padroes');
+      padroesServidor = await resp.json();
+      renderizarSlidersInsumos();
+    }
+
+    function renderizarSlidersInsumos() {
+      const container = document.getElementById('sliders-insumos');
+      container.innerHTML = '';
+
+      padroesServidor.feeds.forEach(feed => {
+        const div = document.createElement('div');
+        div.className = 'space-y-1';
+        div.innerHTML = `
+          <div class="flex justify-between text-xs">
+            <span class="font-medium text-slate-700 truncate max-w-[180px]" title="${feed.nome}">
+              <span class="font-mono text-slate-400 font-bold">${feed.codigo}</span> ${feed.nome}
+            </span>
+            <span class="font-bold text-slate-800" id="val-custo-${feed.fid}">R$ ${feed.custo_ms.toFixed(4)}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <input type="range" 
+                   min="${Math.max(0.1, (feed.custo_ms * 0.2)).toFixed(2)}" 
+                   max="${(feed.custo_ms * 2.5).toFixed(2)}" 
+                   step="0.01" 
+                   value="${feed.custo_ms.toFixed(4)}" 
+                   id="slider-feed-${feed.fid}" 
+                   oninput="onSliderInsumoChange(${feed.fid})" 
+                   class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+          </div>
+          <div class="flex justify-between text-[10px] text-slate-400">
+            <span>R$ ${(feed.custo_ms * 0.2).toFixed(2)}</span>
+            <span class="text-blue-500 font-medium">Orig: R$ ${feed.custo_ms.toFixed(2)}</span>
+            <span>R$ ${(feed.custo_ms * 2.5).toFixed(2)}</span>
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    function onSliderInsumoChange(fid) {
+      const slider = document.getElementById(`slider-feed-${fid}`);
+      const valSpan = document.getElementById(`val-custo-${fid}`);
+      valSpan.innerText = `R$ ${parseFloat(slider.value).toFixed(4)}`;
+      debounceOtimizar();
+    }
+
+    function atualizarParametrosRebanho() {
+      document.getElementById('val-total-cows').innerText = `${document.getElementById('slider-total-cows').value} vacas`;
+      document.getElementById('val-pct-milking').innerText = `${document.getElementById('slider-pct-milking').value} %`;
+      document.getElementById('val-metano').innerText = `${document.getElementById('slider-metano').value} mg/kg MS`;
+      debounceOtimizar();
+    }
+
+    function setOrdenhas(n) {
+      ordenhasAtual = n;
+      if (n === 2) {
+        document.getElementById('btn-ord-2').className = 'py-2 px-3 rounded-lg border text-xs font-bold text-white bg-blue-600 border-blue-600 shadow-sm transition';
+        document.getElementById('btn-ord-3').className = 'py-2 px-3 rounded-lg border text-xs font-medium text-slate-600 bg-slate-50 border-slate-200 hover:bg-slate-100 transition';
+      } else {
+        document.getElementById('btn-ord-3').className = 'py-2 px-3 rounded-lg border text-xs font-bold text-white bg-blue-600 border-blue-600 shadow-sm transition';
+        document.getElementById('btn-ord-2').className = 'py-2 px-3 rounded-lg border text-xs font-medium text-slate-600 bg-slate-50 border-slate-200 hover:bg-slate-100 transition';
+      }
+      debounceOtimizar();
+    }
+
+    let debounceTimer;
+    function debounceOtimizar() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(otimizar, 150);
+    }
+
+    async function otimizar() {
+      const payload = {
+        custos: {},
+        total_cows: parseInt(document.getElementById('slider-total-cows').value),
+        pct_milking: parseFloat(document.getElementById('slider-pct-milking').value),
+        raca: document.getElementById('select-raca').value,
+        ordenhas: ordenhasAtual,
+        metano_3nop: parseFloat(document.getElementById('slider-metano').value),
+        leite_prod: parseFloat(document.getElementById('input-leite-prod').value),
+        leite_preco: parseFloat(document.getElementById('input-leite-preco').value),
+      };
+
+      if (padroesServidor && padroesServidor.feeds) {
+        padroesServidor.feeds.forEach(f => {
+          const slider = document.getElementById(`slider-feed-${f.fid}`);
+          if (slider) payload.custos[f.fid] = parseFloat(slider.value);
+        });
+      }
+
+      const res = await fetch('/api/otimizar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      dadosAtuais = await res.json();
+      atualizarUI();
+    }
+
+    function atualizarUI() {
+      if (!dadosAtuais) return;
+
+      // KPIs Topo
+      document.getElementById('kpi-custo-total').innerText = `R$ ${dadosAtuais.custo_total.toFixed(2)}`;
+      document.getElementById('kpi-custo-kg').innerText = `R$ ${dadosAtuais.custo_kg_ms.toFixed(4)} / kg MS`;
+      document.getElementById('kpi-rebanho').innerText = `${dadosAtuais.total_cows} vacas`;
+      document.getElementById('kpi-rebanho-sub').innerText = `${dadosAtuais.n_vacas_lact} lactantes (${dadosAtuais.pct_milking}%)`;
+      document.getElementById('kpi-leite-dia').innerText = `${dadosAtuais.leite_dia_rebanho.toFixed(0)} L/dia`;
+      document.getElementById('kpi-leite-mes').innerText = `${(dadosAtuais.leite_mes_rebanho / 1000).toFixed(1)} mil L / mês`;
+      document.getElementById('kpi-cocho-dia').innerText = `${dadosAtuais.demanda_mn_dia_t.toFixed(1)} t / dia`;
+      document.getElementById('kpi-cocho-mes').innerText = `${dadosAtuais.demanda_mn_mes_t.toFixed(0)} t frescas / mês`;
+      document.getElementById('kpi-fat-mes').innerText = `R$ ${(dadosAtuais.faturamento_mes_leite / 1000).toFixed(1)} mil`;
+      document.getElementById('kpi-fat-dia').innerText = `R$ ${(dadosAtuais.faturamento_dia_leite / 1000).toFixed(1)} mil / dia`;
+      document.getElementById('kpi-iofc-fazenda').innerText = `R$ ${(dadosAtuais.iofc_mes_rebanho / 1000).toFixed(1)} mil`;
+      document.getElementById('kpi-iofc-dia-fazenda').innerText = `R$ ${(dadosAtuais.iofc_dia_rebanho / 1000).toFixed(1)} mil / dia`;
+
+      // Módulo 1 (Rebanho) Cards
+      document.getElementById('res-vacas-lact').innerText = `${dadosAtuais.n_vacas_lact} vacas`;
+      document.getElementById('res-vacas-secas').innerText = `${dadosAtuais.n_vacas_secas} vacas`;
+      document.getElementById('res-cocho-dia').innerText = `${dadosAtuais.demanda_mn_dia_t.toFixed(2)} t / dia`;
+      document.getElementById('res-ms-dia').innerText = `${dadosAtuais.demanda_ms_dia_t.toFixed(2)} t MS / dia`;
+      document.getElementById('res-silagem-ano').innerText = `${dadosAtuais.silagem_t_ano_rebanho.toFixed(0)} t / ano`;
+      document.getElementById('res-area-silagem').innerText = `${dadosAtuais.area_lavoura_silagem_ha.toFixed(1)} ha (45 t/ha)`;
+
+      document.getElementById('res-fat-mes').innerText = `R$ ${dadosAtuais.faturamento_mes_leite.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+      document.getElementById('res-custo-rebanho-mes').innerText = `R$ ${dadosAtuais.custo_alim_mes_rebanho.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+      document.getElementById('res-iofc-mes').innerText = `R$ ${dadosAtuais.iofc_mes_rebanho.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+      document.getElementById('res-red-metano').innerText = `-${dadosAtuais.reducao_metano_pct.toFixed(1)}% de CH4`;
+      document.getElementById('res-co2-ano').innerText = `${dadosAtuais.co2e_evitado_ano_t.toFixed(1)} t CO2e / ano`;
+
+      // Módulo 2 Tabelas
+      document.getElementById('iteracoes-info').innerText = `${dadosAtuais.nit} iterações do Simplex`;
+
+      const tbodyDieta = document.getElementById('tbody-dieta');
+      tbodyDieta.innerHTML = '';
+      dadosAtuais.dieta.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = item.em_base ? 'bg-blue-50/40 font-medium' : 'text-slate-400 hover:bg-slate-50';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-mono font-semibold ${item.em_base ? 'text-blue-700' : 'text-slate-400'}">${item.codigo}</td>
+          <td class="py-2.5 px-3 ${item.em_base ? 'text-slate-900 font-bold' : 'text-slate-500'}">${item.nome}</td>
+          <td class="py-2.5 px-3 text-slate-500">${item.categoria}</td>
+          <td class="py-2.5 px-3 text-right ${item.em_base ? 'font-bold text-blue-700' : ''}">${item.kg_ms.toFixed(4)}</td>
+          <td class="py-2.5 px-3 text-right">${item.pct_ms.toFixed(1)}%</td>
+          <td class="py-2.5 px-3 text-right">${item.kg_mn.toFixed(2)} kg</td>
+          <td class="py-2.5 px-3 text-right">R$ ${item.custo_ms.toFixed(4)}</td>
+          <td class="py-2.5 px-3 text-right ${item.em_base ? 'font-bold text-slate-900' : ''}">R$ ${item.custo_dia.toFixed(2)}</td>
+          <td class="py-2.5 px-3 text-center">
+            ${item.em_base ? '<span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full text-[10px] font-bold">NA BASE</span>' : '<span class="text-slate-400 text-[10px]">0%</span>'}
+          </td>
+        `;
+        tbodyDieta.appendChild(tr);
+      });
+
+      const tbodyRest = document.getElementById('tbody-restricoes');
+      tbodyRest.innerHTML = '';
+      dadosAtuais.restricoes.forEach(r => {
+        const tr = document.createElement('tr');
+        const isBinding = r.status === 'ATIVA';
+        tr.className = isBinding ? 'bg-rose-50/50 font-medium' : 'hover:bg-slate-50';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-mono text-slate-400">R${r.idx}</td>
+          <td class="py-2.5 px-3 ${isBinding ? 'text-slate-900 font-bold' : 'text-slate-600'}">${r.nome}</td>
+          <td class="py-2.5 px-3 text-right font-mono">${r.limite.toFixed(2)}</td>
+          <td class="py-2.5 px-3 text-right font-mono ${isBinding ? 'font-bold text-rose-700' : 'text-slate-700'}">${r.valor_real.toFixed(2)}</td>
+          <td class="py-2.5 px-3 text-center">
+            <span class="${isBinding ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 text-slate-700'} px-2 py-0.5 rounded-full text-[10px] font-bold">${r.status}</span>
+          </td>
+          <td class="py-2.5 px-3 text-right font-mono">${isBinding ? '0.0000' : r.folga.toFixed(4)}</td>
+          <td class="py-2.5 px-3 text-right font-mono ${r.preco_sombra > 0 ? 'font-bold text-amber-600' : 'text-slate-400'}">
+            ${r.preco_sombra > 0 ? `R$ ${r.preco_sombra.toFixed(4)}` : '—'}
+          </td>
+        `;
+        tbodyRest.appendChild(tr);
+      });
+
+      const tbodySens = document.getElementById('tbody-sensibilidade');
+      tbodySens.innerHTML = '';
+      dadosAtuais.dieta.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = item.em_base ? 'bg-blue-50/30' : 'hover:bg-slate-50';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-mono font-semibold ${item.em_base ? 'text-blue-700' : 'text-slate-400'}">${item.codigo}</td>
+          <td class="py-2.5 px-3 font-medium">${item.nome}</td>
+          <td class="py-2.5 px-3 text-center">
+            ${item.em_base ? '<span class="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[10px] font-semibold">BÁSICA</span>' : '<span class="bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px]">NÃO-BÁSICA</span>'}
+          </td>
+          <td class="py-2.5 px-3 text-right font-mono">R$ ${item.custo_ms.toFixed(4)}</td>
+          <td class="py-2.5 px-3 text-right font-mono text-emerald-600 font-medium">${item.custo_min !== '-Inf' ? `R$ ${item.custo_min.toFixed(4)}` : '-Inf'}</td>
+          <td class="py-2.5 px-3 text-right font-mono text-rose-600 font-medium">${item.custo_max !== '+Inf' ? `R$ ${item.custo_max.toFixed(4)}` : '+Inf'}</td>
+          <td class="py-2.5 px-3 text-right font-mono font-bold ${item.custo_reduzido > 0 ? 'text-purple-600' : 'text-slate-400'}">
+            ${item.custo_reduzido > 0 ? `+ R$ ${item.custo_reduzido.toFixed(4)}` : '0.0000'}
+          </td>
+        `;
+        tbodySens.appendChild(tr);
+      });
+
+      atualizarGraficos();
+      atualizarSelectTableaus();
+    }
+
+    function atualizarGraficos() {
+      // 1. Gráficos do Módulo 1 (Rebanho)
+      const ctxReb = document.getElementById('chart-rebanho-dist').getContext('2d');
+      if (chartRebanhoDist) chartRebanhoDist.destroy();
+      chartRebanhoDist = new Chart(ctxReb, {
+        type: 'doughnut',
+        data: {
+          labels: ['Vacas em Lactação', 'Vacas Secas (Pré-Parto)'],
+          datasets: [{
+            data: [dadosAtuais.n_vacas_lact, dadosAtuais.n_vacas_secas],
+            backgroundColor: ['#2563eb', '#cbd5e1'],
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom' } }
+        }
+      });
+
+      const ctxFin = document.getElementById('chart-financeiro-rebanho').getContext('2d');
+      if (chartFinanceiroRebanho) chartFinanceiroRebanho.destroy();
+      chartFinanceiroRebanho = new Chart(ctxFin, {
+        type: 'bar',
+        data: {
+          labels: ['Faturamento Leite', 'Custo Ração', 'Margem IOFC'],
+          datasets: [{
+            label: 'R$ / Mês',
+            data: [dadosAtuais.faturamento_mes_leite, dadosAtuais.custo_alim_mes_rebanho, dadosAtuais.iofc_mes_rebanho],
+            backgroundColor: ['#0284c7', '#f43f5e', '#10b981'],
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+
+      // 2. Gráficos do Módulo 2 (Dieta)
+      const itensComConsumo = dadosAtuais.dieta.filter(d => d.kg_ms > 0.001);
+      const labels = itensComConsumo.map(d => d.nome);
+      const dadosMN = itensComConsumo.map(d => d.kg_mn);
+      const dadosMS = itensComConsumo.map(d => d.pct_ms);
+      const cores = ['#2563eb', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4'];
+
+      const ctxBar = document.getElementById('chart-barras').getContext('2d');
+      if (chartBarras) chartBarras.destroy();
+      chartBarras = new Chart(ctxBar, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'kg no Cocho (Mat. Natural)',
+            data: dadosMN,
+            backgroundColor: cores.slice(0, labels.length),
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+
+      const ctxPie = document.getElementById('chart-pizza').getContext('2d');
+      if (chartPizza) chartPizza.destroy();
+      chartPizza = new Chart(ctxPie, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: dadosMS,
+            backgroundColor: cores.slice(0, labels.length),
+            borderWidth: 2
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { position: 'bottom' } }
+        }
+      });
+    }
+
+    function atualizarSelectTableaus() {
+      const select = document.getElementById('select-tableau');
+      select.innerHTML = '';
+      if (!dadosAtuais.tableaus) return;
+
+      dadosAtuais.tableaus.forEach((t, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.text = `Iteração ${t.iteration} - ${t.phase_name} (Z = R$ ${t.obj_val.toFixed(2)})`;
+        select.appendChild(opt);
+      });
+      select.value = dadosAtuais.tableaus.length - 1;
+      exibirTableauSelecionado();
+    }
+
+    function exibirTableauSelecionado() {
+      const idx = document.getElementById('select-tableau').value;
+      const t = dadosAtuais.tableaus[idx];
+      if (!t) return;
+
+      document.getElementById('tab-fase').innerText = t.phase_name;
+      document.getElementById('tab-entrante').innerText = t.entering_var || 'Nenhuma (Ótimo)';
+      document.getElementById('tab-sainte').innerText = t.leaving_var || 'Nenhuma';
+      document.getElementById('tab-pivo').innerText = t.pivot_val !== null ? t.pivot_val.toFixed(4) : '—';
+
+      const table = document.getElementById('tabela-matriz-tableau');
+      table.innerHTML = '';
+
+      const thead = document.createElement('thead');
+      thead.className = 'bg-slate-100 text-slate-700 sticky top-0';
+      let headerHtml = '<tr><th class="p-2 border">Base</th>';
+      t.col_names.forEach((col, cIdx) => {
+        const isPivotCol = (cIdx === t.pivot_col);
+        headerHtml += `<th class="p-2 border text-right ${isPivotCol ? 'bg-emerald-100 text-emerald-900 font-bold' : ''}">${col}</th>`;
+      });
+      headerHtml += '<th class="p-2 border text-right bg-blue-100 text-blue-900 font-bold">RHS (b)</th></tr>';
+      thead.innerHTML = headerHtml;
+      table.appendChild(thead);
+
+      const tbody = document.createElement('tbody');
+      tbody.className = 'divide-y divide-slate-200';
+
+      t.matrix_rows.forEach((row, rIdx) => {
+        const tr = document.createElement('tr');
+        const isPivotRow = (rIdx === t.pivot_row);
+        const rowLabel = t.row_labels && t.row_labels[rIdx] ? t.row_labels[rIdx] : `s${rIdx+1}`;
+        let rowHtml = `<td class="p-2 border font-bold ${isPivotRow ? 'bg-emerald-100 text-emerald-900' : 'bg-slate-50 text-slate-600'}">${rowLabel}</td>`;
+
+        row.forEach((val, cIdx) => {
+          const isPivotCell = (rIdx === t.pivot_row && cIdx === t.pivot_col);
+          const isPivotCol = (cIdx === t.pivot_col);
+          let cellClass = 'p-2 border text-right ';
+          if (isPivotCell) cellClass += 'bg-emerald-300 text-emerald-950 font-extrabold ring-2 ring-emerald-500';
+          else if (isPivotRow) cellClass += 'bg-emerald-50 text-emerald-900';
+          else if (isPivotCol) cellClass += 'bg-emerald-50/50';
+          rowHtml += `<td class="${cellClass}">${val.toFixed(3)}</td>`;
+        });
+        tr.innerHTML = rowHtml;
+        tbody.appendChild(tr);
+      });
+
+      if (t.reduced_costs && t.reduced_costs.length > 0) {
+        const trZ = document.createElement('tr');
+        trZ.className = 'bg-indigo-50 font-bold text-indigo-900 border-t-2 border-indigo-300';
+        let zHtml = '<td class="p-2 border font-bold text-indigo-900">Linha Z (c_j - z_j)</td>';
+        t.reduced_costs.forEach((val) => {
+          zHtml += `<td class="p-2 border text-right">${val.toFixed(3)}</td>`;
+        });
+        zHtml += `<td class="p-2 border text-right text-blue-900 font-extrabold">Z = ${t.obj_val.toFixed(2)}</td>`;
+        trZ.innerHTML = zHtml;
+        tbody.appendChild(trZ);
+      }
+
+      table.appendChild(tbody);
+    }
+
+    function trocarModulo(moduloId) {
+      ['modulo-rebanho', 'modulo-dieta', 'modulo-tableaus'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+        document.getElementById(`nav-${id}`).className = 'py-2.5 px-4 text-xs font-semibold border-b-2 border-transparent text-slate-300 hover:text-white flex items-center gap-2 transition';
+      });
+      document.getElementById(moduloId).classList.remove('hidden');
+      document.getElementById(`nav-${moduloId}`).className = 'py-2.5 px-4 text-xs font-semibold border-b-2 border-emerald-400 text-white flex items-center gap-2 transition';
+    }
+
+    function aplicarCenario(cenario) {
+      if (!padroesServidor) return;
+
+      restaurarPadroesSilencioso();
+
+      if (cenario === 'milho_barato') {
+        setFeedSlider(44, 0.65);
+      } else if (cenario === 'choque_graos') {
+        setFeedSlider(44, 1.2413 * 1.40);
+        setFeedSlider(303, 1.2159 * 1.40);
+      } else if (cenario === 'seca_silagem') {
+        setFeedSlider(51, 0.6988 * 1.50);
+      }
+
+      otimizar();
+    }
+
+    function setFeedSlider(fid, valor) {
+      const slider = document.getElementById(`slider-feed-${fid}`);
+      if (slider) {
+        slider.value = valor.toFixed(4);
+        document.getElementById(`val-custo-${fid}`).innerText = `R$ ${valor.toFixed(4)}`;
+      }
+    }
+
+    function restaurarPadroesSilencioso() {
+      if (!padroesServidor) return;
+      padroesServidor.feeds.forEach(f => {
+        setFeedSlider(f.fid, f.custo_ms);
+      });
+      document.getElementById('slider-total-cows').value = padroesServidor.total_cows;
+      document.getElementById('slider-pct-milking').value = padroesServidor.pct_milking;
+      document.getElementById('select-raca').value = padroesServidor.raca;
+      document.getElementById('slider-metano').value = padroesServidor.metano_3nop;
+      document.getElementById('input-leite-prod').value = padroesServidor.leite_prod;
+      document.getElementById('input-leite-preco').value = padroesServidor.leite_preco;
+      setOrdenhas(padroesServidor.ordenhas);
+      atualizarParametrosRebanho();
+    }
+
+    function restaurarPadroes() {
+      restaurarPadroesSilencioso();
+      otimizar();
+    }
+  </script>
+</body>
+</html>
